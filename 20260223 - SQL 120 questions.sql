@@ -470,6 +470,10 @@ join oe.order_items items on ord.order_id = items.order_id
 ) where dups>1 order by order_id, product_id;
 
 -- 20. Find cumulative distinct count.
-SELECT order_date, SUM(order_count) OVER (ORDER BY order_count) cumulative_count
-FROM (SELECT order_date, COUNT(DISTINCT order_id) AS order_count FROM oe.orders GROUP by order_date) 
-group by order_date;
+SELECT source.order_date,
+    (SELECT COUNT(DISTINCT ref.order_id)
+        FROM oe.orders ref
+        WHERE ref.order_date <= source.order_date
+    ) AS cum_distinct_count
+FROM (SELECT DISTINCT order_date FROM oe.orders) source
+ORDER BY source.order_date;
