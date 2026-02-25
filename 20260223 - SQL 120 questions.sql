@@ -292,46 +292,184 @@ select REGR_SLOPE(quantity*unit_price, unit_price) reg_slope from orders;
 -- -- NULL VALUE FUNCTIONS – 20 Questions
 
 -- 1. Replace NULL price with 0.
+select distinct replace(unit_price,0) from orders; 
+
 -- 2. Replace NULL Customer_Name with 'Unknown'.
+select distinct replace(CUSTOMER_NAME,'Unknown') from orders; 
+
 -- 3. Count NULL values in Product_Name.
+select count(*) from ORDERS where PRODUCT_NAME is null;
+
 -- 4. Find rows where Order_Date is NULL.
+select * from orders where order_date is NULL;
+
 -- 5. Use COALESCE to return first non-null value.
+select coalesce(customer_name, product_category, product_name) as non_null_value from orders;
+
 -- 6. Use NVL to replace NULL values.
+select distinct NVL(unit_price,0) from orders; 
+
 -- 7. Use IFNULL function.
+select distinct NULLIF(unit_price,0) from orders; 
+
 -- 8. Check if column is NULL.
+select case when customer_name is NULL then 'Column is NULL' else 'Not NULL value' end as customer_name from orders; 
+
 -- 9. Check if column is NOT NULL.
+select case when customer_name is not NULL then 'Column is not NULL' end as customer_name from orders; 
+
 -- 10. Use NULLIF between two columns.
+select distinct NULLIF(PRODUCT_NAME,PRODUCT_CATEGORY) as NULLIF_value from orders; 
+
 -- 11. Replace blank values with NULL.
+select replace('',NULL);
+
 -- 12. Count non-null values.
+select count(distinct customer_name) from orders where customer_name is not null; 
+
 -- 13. Filter records where price is NULL or 0.
+select * from orders where unit_price is NULL or unit_price = 0;
+
 -- 14. Use CASE to handle NULL values.
+select distinct case when customer_name is null then 'Name not Available' else customer_name end as customer_name from orders; 
+
 -- 15. Compare NULL values properly.
+select source. order_id, ref.order_id from orders source
+join orders ref on nvl(source.order_date,sysdate) = nvl(ref.order_date,sysdate); 
+
 -- 16. Handle NULL in aggregation.
+select product_name, sum(nvl(quantity,1)*nvl(unit_price,1)) as Total_Sale from orders group by product_name;
+
 -- 17. Find average excluding NULL values.
+select avg(unit_price) average_Sales from orders where unit_price is not null;
+
 -- 18. Find sum ignoring NULL values.
+select sum(QUANTITY) No_of_units from orders where unit_price is not null;
+
 -- 19. Identify columns containing NULL using metadata.
+
+
 -- 20. Convert NULL to default system date.
+select NVL(order_date,sysdate) order_date from orders;
 
 
 -- -- ANALYTICAL FUNCTIONS (WINDOW FUNCTIONS) – 20 Questions
 
 -- 1. Assign row numbers to each order.
+select order_id, row_number() over(order by Order_ID) from orders;
+
 -- 2. Rank products by price.
+select UNIT_PRICE, rank() over(order by unit_price) from orders;
+
 -- 3. Dense rank products by sales.
+select product_category, 
+sum(quantity * unit_price) Sales_total, 
+dense_rank() over(order by sum(quantity * unit_price)) as slaes_dense_rank from ORDERS
+group by PRODUCT_CATEGORY;
+
 -- 4. Find running total of sales.
+select order_date, 
+quantity*unit_price as sales_totals, 
+sum(quantity*unit_price) over (order by order_date) sale_running_totals from orders;
+
 -- 5. Calculate cumulative sum by month.
+select to_char(order_date,'YYYY-MM') as year_month,
+sum(order_total) as monthly_totals,
+sum(sum(order_total)) over(order by to_char(order_date,'YYYY-MM')) as cumuilative_sum
+from oe.orders group by year_month;
+
 -- 6. Find moving average of last 3 days.
+select order_date, 
+quantity*unit_price as sales_totals, 
+avg(quantity*unit_price) over (order by order_date) sale_running_totals from orders
+where order_date in (select order_date from orders order by order_date desc fetch first 3 rows only); 
+
 -- 7. Calculate lag of previous day sales.
+select order_date, quantity*unit_price sales, 
+lag(order_date) over(order by order_id) previous_date,
+lag(quantity*unit_price) over(order by order_id) previous_day_sale
+from orders;
+
 -- 8. Calculate lead of next day sales.
+select order_date, quantity*unit_price sales, 
+lead(order_date) over(order by order_id) next_date,
+lead(quantity*unit_price) over(order by order_id) next_day_sale
+from orders;
+
 -- 9. Find difference between current and previous sale.
+select order_date, quantity*unit_price sales, 
+lag(order_date) over(order by order_id) previous_date,
+lag(quantity*unit_price) over(order by order_id) previous_day_sale,
+quantity*unit_price - lag(quantity*unit_price) over(order by order_id) as difference
+from orders;
+
 -- 10. Partition sales by region.
+select distinct nls_territory, sum(order_total) OVER (PARTITION BY nls_territory) as total_sales 
+from oe.orders ord 
+join oe.CUSTOMERS cust on cust.CUSTOMER_ID = ord.CUSTOMER_ID;
+
 -- 11. Find top 3 products per category.
+
+select category_name, product_name, sale_totals from (
+select distinct category_name, product_name, sum(order_total) sale_totals,
+row_number() over(partition by category_name order by sum(order_total) desc) product_rank
+from oe.orders ord join oe.order_items items on ord.order_id = items.order_id
+join oe.PRODUCT_INFORMATION prod_info on items.PRODUCT_ID = prod_info.product_id
+join oe.CATEGORIES_TAB categ on prod_info.category_id = categ.category_id
+group by category_name, product_name)
+where product_rank < 4
+order by category_name, sale_totals desc;
+
 -- 12. Find bottom 2 customers by sales.
+select customer_id, sum(order_total) total_sales from oe.orders
+group by CUSTOMER_ID
+order by sum(order_total)
+fetch first 2 rows only; 
+
 -- 13. Calculate percentage of total sales.
+select order_id, order_total, total_sales, round((order_total*100)/total_sales,2) as Sale_percent from(
+select order_id, order_total, (select sum(order_total) from oe.orders) as total_sales from oe.orders);
+
 -- 14. Calculate NTILE distribution of customers.
+SELECT 
+    customer_id,
+    sum(order_total) as total_purchase,
+    NTILE(4) OVER (ORDER BY sum(order_total) DESC) AS customer_dsit
+FROM oe.ORDERS
+group by customer_id;
+
 -- 15. Find first order per customer.
+select customer_id, order_date, order_total from(
+select customer_id, order_date, order_total,
+row_number() over (partition by customer_id order by order_date) order_rank
+from oe.ORDERS) where order_rank = 1;
+
 -- 16. Find last order per customer.
+select customer_id, order_date, order_total from(
+select customer_id, order_date, order_total,
+row_number() over (partition by customer_id order by order_date desc) order_rank
+from oe.ORDERS) where order_rank = 1;
+
 -- 17. Calculate average salary within department.
+select department_name, round(avg(salary),2) as avg_slary from hr.employees emp
+join hr.departments dpt on emp.department_id = dpt.department_id 
+group by department_name ;
+
 -- 18. Compare current row with max value in partition.
+SELECT distinct product_id, ord.order_id, order_total,
+    MAX(order_total) OVER (PARTITION BY product_id) AS max_in_product,
+    CASE WHEN order_total = MAX(order_total) OVER (PARTITION BY product_id) THEN 'MAX'
+        ELSE 'NOT MAX' END AS sale_comparision
+FROM oe.ORDERS ord join oe.ORDER_ITEMS items on ord.order_id = items.order_id 
+order by product_id, ord.order_id;
+
 -- 19. Identify duplicate records using ROW_NUMBER.
+select product_id, order_id, order_total from (
+Select product_id, ord.order_id, order_total, row_number() over (partition by ord.order_id, order_total order by ord.order_id) as dups from oe.ORDERS ord
+join oe.order_items items on ord.order_id = items.order_id
+) where dups>1 order by order_id, product_id;
+
 -- 20. Find cumulative distinct count.
+SELECT order_date, SUM(order_count) OVER (ORDER BY order_count) cumulative_count
+FROM (SELECT order_date, COUNT(DISTINCT order_id) AS order_count FROM oe.orders GROUP by order_date) 
+group by order_date;
