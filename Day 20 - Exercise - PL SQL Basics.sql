@@ -331,81 +331,306 @@ END;
 
 --H1. Loop through employee_id 100 to 105; for each, SELECT salary INTO variable and print employee_id and salary--Hint: FOR id IN 100..105 LOOP SELECT salary INTO v_sal FROM employees WHERE employee_id = id; DBMS_OUTPUT.PUT_LINE(id || ' ' || v_sal); END LOOP;
 
-
+SET SERVEROUTPUT ON
+DECLARE
+  v_emp_id NUMBER := 100;
+  v_salary employees.salary%TYPE;
+BEGIN
+  LOOP
+    SELECT salary INTO v_salary from employees WHERE employee_id = v_emp_id;
+    DBMS_OUTPUT.PUT_LINE('Employee ID: '||v_emp_id|| ' and Salary: '|| v_salary);
+    v_emp_id := v_emp_id + 1;        
+    EXIT WHEN v_emp_id > 105;
+  END LOOP;
+END;
+/
 
 --H2. Use EXCEPTION WHEN NO_DATA_FOUND THEN print 'Not found'--Hint: EXCEPTION WHEN NO_DATA_FOUND THEN DBMS_OUTPUT.PUT_LINE('Not found');
 
-
+SET SERVEROUTPUT ON
+DECLARE
+  v_first_name employees.first_name%TYPE;
+  v_last_name  employees.last_name%TYPE;
+BEGIN
+  SELECT first_name, last_name INTO v_first_name, v_last_name
+  FROM employees WHERE employee_id = 100;
+  DBMS_OUTPUT.PUT_LINE('Employee: ' || v_first_name || ' ' || v_last_name);
+EXCEPTION
+  WHEN NO_DATA_FOUND THEN DBMS_OUTPUT.PUT_LINE('Employee not found');
+END;
+/
 
 --H3. Declare record type with employee_id, first_name, last_name; select into it--Hint: TYPE t_emp IS RECORD (employee_id NUMBER, first_name VARCHAR2(20), last_name VARCHAR2(25)); v_rec t_emp; SELECT employee_id, first_name, last_name INTO v_rec FROM ...
 
-
+SET SERVEROUTPUT ON
+DECLARE
+  TYPE t_emp IS RECORD (employee_id NUMBER, first_name VARCHAR2(20), last_name VARCHAR2(25));
+  v_rec t_emp;
+BEGIN
+  SELECT employee_id, first_name , last_name into v_rec FROM employees WHERE employee_id = 100;
+  DBMS_OUTPUT.PUT_LINE('Employee ID: '||v_rec.employee_id||', First Name: ' || v_rec.first_name || ', Last NAme: ' || v_rec.last_name);
+END;
+/
 
 --H4. WHILE loop: fetch employees where department_id = 50 until no rows (use cursor or BULK COLLECT LIMIT 1)--Hint: Use explicit cursor; OPEN; LOOP FETCH ... EXIT WHEN cursor%NOTFOUND; ... END LOOP; CLOSE;
 
-
+SET SERVEROUTPUT ON;
+DECLARE
+    TYPE emp_rec IS RECORD (employee_id employees.employee_id%TYPE, first_name  employees.first_name%TYPE, last_name   employees.last_name%TYPE);
+    TYPE emp_tab IS TABLE OF emp_rec;
+    v_emps emp_tab;
+    CURSOR c_emp IS SELECT employee_id, first_name, last_name FROM employees WHERE department_id = 50;
+BEGIN
+    OPEN c_emp;
+    LOOP
+        FETCH c_emp BULK COLLECT INTO v_emps LIMIT 1;
+        EXIT WHEN v_emps.COUNT = 0;
+        FOR i IN 1 .. v_emps.COUNT LOOP
+            DBMS_OUTPUT.PUT_LINE(
+                'Emp ID: ' || v_emps(i).employee_id ||
+                ', Name: ' || v_emps(i).first_name || ' ' || v_emps(i).last_name
+            );
+        END LOOP;
+    END LOOP;
+    CLOSE c_emp;
+END;
+/
 
 --H5. Nested IF: if dept_id = 50 then if salary > 5000 then 'A' else 'B'; else 'C'--Hint: IF ... THEN IF ... THEN ... ELSE ... END IF; ELSE ... END IF;
-
-
+     
+SET SERVEROUTPUT ON;
+DECLARE
+    TYPE emp_rec IS RECORD (employee_id employees.employee_id%TYPE, salary employees.salary%TYPE);
+    TYPE emp_tab IS TABLE OF emp_rec;
+    v_emps emp_tab;
+    CURSOR c_emp IS SELECT employee_id, salary FROM employees WHERE department_id = 50;
+    result  CHAR(1);
+BEGIN
+    OPEN c_emp;
+    LOOP
+        FETCH c_emp BULK COLLECT INTO v_emps LIMIT 1;
+        EXIT WHEN v_emps.COUNT = 0;
+        FOR i IN 1 .. v_emps.COUNT LOOP
+            if v_emps(i).salary > 5000 then result := 'A'; ELSE result := 'B'; END IF;
+            DBMS_OUTPUT.PUT_LINE('Emp ID: ' || v_emps(i).employee_id ||', Salary category: ' || result);
+        END LOOP;
+    END LOOP;
+    CLOSE c_emp;
+END;
+/
 
 --H6. Assign v_total := 0; loop 1 to 10, v_total := v_total + i; print v_total at end--Hint: FOR i IN 1..10 LOOP v_total := v_total + i; END LOOP;
 
-
+SET SERVEROUTPUT ON;
+DECLARE
+    v_total NUMBER := 0;  
+BEGIN
+    FOR i IN 1..10 LOOP
+        v_total := v_total + i;  
+    END LOOP;
+    DBMS_OUTPUT.PUT_LINE('Total sum from 1 to 10 is: ' || v_total);
+END;
+/
 
 --H7. SELECT COUNT(*) INTO v_c FROM employees WHERE department_id = v_dept_id; use v_dept_id from another SELECT--Hint: First get v_dept_id (e.g. from departments), then use in second query.
 
-
+SET SERVEROUTPUT ON;
+DECLARE
+    v_dept_id   employees.department_id%TYPE;
+    v_c         NUMBER;
+BEGIN
+    SELECT department_id INTO v_dept_id FROM departments WHERE department_name = 'Administration';
+    SELECT COUNT(*) INTO v_c FROM employees WHERE department_id = v_dept_id;
+    DBMS_OUTPUT.PUT_LINE('Department ID: ' || v_dept_id);
+    DBMS_OUTPUT.PUT_LINE('Employee Count: ' || v_c);
+END;
+/
+--select * from departments;
 
 --H8. Declare CONSTANT v_max NUMBER := 100; use in IF condition--Hint: v_max CONSTANT NUMBER := 100; IF v_salary > v_max THEN ...
 
-
+SET SERVEROUTPUT ON;
+DECLARE
+    v_max CONSTANT NUMBER := 100;
+    v_salary NUMBER; 
+BEGIN
+  select salary into v_salary from employees where employee_id = 100; 
+  IF v_salary < v_max THEN
+      DBMS_OUTPUT.PUT_LINE('Value ' || v_salary || ' is less than v_max (' || v_max || ').');
+  ELSIF v_salary = v_max THEN
+      DBMS_OUTPUT.PUT_LINE('Value equals v_max.');
+  ELSE
+      DBMS_OUTPUT.PUT_LINE('Value is greater than v_max.');
+  END IF;
+END;
+/
 
 --H9. Use SQL%ROWCOUNT after UPDATE employees SET ... WHERE ...; print number of rows updated--Hint: UPDATE ... ; DBMS_OUTPUT.PUT_LINE(SQL%ROWCOUNT);
 
+SET SERVEROUTPUT ON;
+BEGIN
+    UPDATE employees SET salary = salary * 1.10 WHERE department_id = 50;
 
+   DBMS_OUTPUT.PUT_LINE(SQL%ROWCOUNT || ' row(s) updated.');
+END;
+/
 
 --H10. FOR rec IN (SELECT employee_id, first_name FROM employees WHERE ROWNUM <= 5) LOOP print rec.employee_id, rec.first_name--Hint: FOR rec IN (SELECT ... ) LOOP ... END LOOP;
 
+SET SERVEROUTPUT ON;
 
+BEGIN
+    FOR rec IN (SELECT employee_id, first_name FROM employees WHERE ROWNUM <= 5) 
+    LOOP
+        DBMS_OUTPUT.PUT_LINE('ID: ' || rec.employee_id || ', Name: ' || rec.first_name);
+    END LOOP;
+END;
+/
 
 --H11. Declare v_date DATE := SYSDATE; print it with TO_CHAR--Hint: DBMS_OUTPUT.PUT_LINE(TO_CHAR(v_date, 'DD-MON-YYYY'));
 
-
+BEGIN
+    DECLARE
+        v_date DATE := SYSDATE;
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE(TO_CHAR(v_date, 'DD-MON-YYYY'));
+    END;
+END;
+/
 
 --H12. IF v_emp.salary IS NULL THEN ..--Hint: Handle NULL in record field.
 
+SET SERVEROUTPUT ON
 
+DECLARE
+  CURSOR c IS SELECT employee_id, salary FROM employees WHERE department_id = 50;
+BEGIN
+  FOR rec IN c LOOP
+    IF rec.salary IS NULL THEN
+        DBMS_OUTPUT.PUT_LINE('Salary is not available for Employee ID: '||rec.employee_id);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Salary is: ' || rec.salary||' for Employee ID: '||rec.employee_id);
+    END IF;
+  END LOOP;
+END;
+/
 
 --H13. Loop: i from 1 to 10; if i mod 2 = 0 then print i--Hint: IF MOD(i, 2) = 0 THEN DBMS_OUTPUT.PUT_LINE(i); END IF;
 
-
+SET SERVEROUTPUT ON;
+BEGIN
+    FOR i IN 1..10 LOOP
+        IF MOD(i, 2) = 0 THEN
+            DBMS_OUTPUT.PUT_LINE(i);
+        END IF;
+    END LOOP;
+END;
+/
 
 --H14. Select into %ROWTYPE; then update another variable from v_emp.salary * 1.1--Hint: v_new_sal := v_emp.salary * 1.1;
 
-
+DECLARE
+    v_emp employees%ROWTYPE;
+    v_new_salary employees.salary%TYPE;
+BEGIN
+    SELECT * INTO v_emp FROM employees WHERE employee_id = 101; 
+    v_new_salary := v_emp.salary * 1.1;
+    DBMS_OUTPUT.PUT_LINE('Employee: ' || v_emp.first_name || ' ' || v_emp.last_name);
+    DBMS_OUTPUT.PUT_LINE('Old Salary: ' || v_emp.salary);
+    DBMS_OUTPUT.PUT_LINE('New Salary: ' || v_new_salary);
+END;
+/
 
 --H15. EXIT WHEN condition in the middle of LOOP (e.g. when v_count > 5)--Hint: LOOP ... v_count := v_count + 1; EXIT WHEN v_count > 5; ... END LOOP;
 
-
+SET SERVEROUTPUT ON;
+DECLARE
+    v_total NUMBER := 0;  
+BEGIN
+    FOR i IN 1..10 LOOP
+        v_total := v_total + i;  
+      exit when v_total > 5;
+      DBMS_OUTPUT.PUT_LINE('Total sum from 1 to '||i||' is: ' || v_total);
+    END LOOP;
+END;
+/
 
 --H16. Declare v_result VARCHAR2(100); use CASE in PL/SQL: v_result := CASE WHEN v_sal < 5000 THEN 'Low' WHEN v_sal < 10000 THEN 'Mid' ELSE 'High' END; Hint: Assignment with CASE expression.
 
-
+SET SERVEROUTPUT ON;
+DECLARE
+    TYPE emp_rec IS RECORD (employee_id employees.employee_id%TYPE, salary employees.salary%TYPE);
+    TYPE emp_tab IS TABLE OF emp_rec;
+    v_emps emp_tab;
+    CURSOR c_emp IS SELECT employee_id, salary FROM employees WHERE department_id = 50;
+    v_result  VARCHAR2(100);
+BEGIN
+    OPEN c_emp;
+    LOOP
+        FETCH c_emp BULK COLLECT INTO v_emps LIMIT 1;
+        EXIT WHEN v_emps.COUNT = 0;
+        FOR i IN 1 .. v_emps.COUNT LOOP
+            v_result :=  case when v_emps(i).salary < 5000 then 'Low' WHEN v_emps(i).salary < 10000 THEN 'Mid' ELSE 'High' END;
+            DBMS_OUTPUT.PUT_LINE('Emp ID: ' || v_emps(i).employee_id ||', Salary category: ' || v_result);
+        END LOOP;
+    END LOOP;
+    CLOSE c_emp;
+END;
+/
 
 --H17. Nested FOR: outer 1..2, inner 1..3; print outer and inner--Hint: FOR o IN 1..2 LOOP FOR i IN 1..3 LOOP DBMS_OUTPUT.PUT_LINE(o || ',' || i); END LOOP; END LOOP;
 
-
+SET SERVEROUTPUT ON;
+BEGIN
+  FOR o IN 1..2 LOOP
+    FOR i IN 1..3 LOOP
+      DBMS_OUTPUT.PUT_LINE(o || ',' || i);
+    END LOOP;
+  END LOOP;
+END;
+/
 
 --H18. SELECT department_id INTO v_did FROM departments WHERE department_name = 'Sales'; then use v_did in SELECT COUNT(*) FROM employees WHERE department_id = v_did--Hint: Two SELECT INTOs; use first result in second.
 
+DECLARE
+    v_did   departments.department_id%TYPE;
+    v_count NUMBER;
+BEGIN
+    SELECT department_id INTO v_did FROM departments WHERE department_name = 'Sales';
+    SELECT COUNT(*) INTO v_count FROM employees WHERE department_id = v_did;
 
+    DBMS_OUTPUT.PUT_LINE('Department ID: ' || v_did);
+    DBMS_OUTPUT.PUT_LINE('Number of employees: ' || v_count);
+END;
+/
 
 --H19. Use BIND variable in PL/SQL (e.g. in EXECUTE IMMEDIATE 'SELECT salary FROM employees WHERE employee_id = :1' INTO v_sal USING v_id)--Hint: EXECUTE IMMEDIATE '...' INTO ... USING ...;
 
-
+SET SERVEROUTPUT ON;
+DECLARE
+    v_id   employees.employee_id%TYPE := 101; 
+    v_sal  employees.salary%TYPE;            
+BEGIN
+    EXECUTE IMMEDIATE
+      'SELECT salary FROM employees WHERE employee_id = :1' INTO v_sal USING v_id;  
+    DBMS_OUTPUT.PUT_LINE('Salary for employee ' || v_id || ' is: ' || v_sal);
+END;
+/
 
 --H20. Block that only runs if v_flag = 1 (IF v_flag = 1 THEN ... entire logic ... END IF)--Hint: Wrap main logic in IF condition.
 
-
+DECLARE
+    v_flag NUMBER := 1;
+    v_result NUMBER;
+BEGIN
+    IF v_flag = 1 THEN
+        DBMS_OUTPUT.PUT_LINE('v_flag is 1, executing logic...');
+        v_result := 10 * 5;
+        DBMS_OUTPUT.PUT_LINE('Result is: ' || v_result);
+        v_result := v_result + 100;
+        DBMS_OUTPUT.PUT_LINE('Updated result: ' || v_result);
+    END IF;
+    DBMS_OUTPUT.PUT_LINE('End of program.');
+END;
+/
 
